@@ -1,16 +1,39 @@
 from tkinter import *
 from tkinter import ttk
-from time import sleep
+import serial
+from numpy import interp
+
 root = Tk()
 
-class Sistema:
+
+class LerDist:
+    def create_porta(self):
+        aux = '/dev/ttyUSB0'
+        self.portaUSB = serial.Serial(aux, 9600)
+
+    def sen_command(self, cod):
+        aux = str(cod)
+        self.portaUSB.write(aux.encode())
+
+    def read_command(self):
+        msg = self.portaUSB.readline()  # read everything in the input buffer
+        dist = str(msg)
+        dist = dist.replace("b'", '')
+        dist = dist.replace("'", "")
+        dist = dist.split("f")
+        return dist
+
+
+class Sistema(LerDist):
     def __init__(self):
         self.root = root
         self.tela()
         self.menus()
         self.frames()
         self.tanques()
+        self.create_porta()
         self.SensorUltrassom()
+
         root.mainloop()
 
     def tela(self):
@@ -82,19 +105,27 @@ class Sistema:
                             )
         self.tanque_2['value'] = 100
 
-
     def niveis(self, distancia):
-        distancia = int(distancia)
+        distancia = float(interp(distancia, [0, 25], [0, 90]))
         self.tanque_1['value'] = distancia
         self.tanque_2['value'] = 100 - distancia
 
     def SensorUltrassom(self):
-        self.entry = Entry(self.frame_2)
+        self.entry = Entry(self.frame_2,
+                           justify='center',
+                           relief='groove')
         self.entry.place(relx=0.02,
                          rely=0.1,
-                         relwidth=0.2
+                         relwidth=0.05
                          )
-        self.entry.bind("<Return>", lambda e: self.niveis(self.entry.get()))
+        self.sen_command(1)
+        dist = self.read_command()
+        self.entry.insert(0, dist[0])
+        self.niveis(dist[0])
+        root.after(100, self.SensorUltrassom)
+
     def variaveis(self):
         pass
+
+
 Sistema()
